@@ -1,11 +1,12 @@
 # Currency Converter (Web UI)
 
-A simple, modern currency converter with a sleek browser-based UI (no Tkinter).
+A comprehensive currency converter with a modern browser-based UI featuring 150+ currencies with flag emojis.
 
-- Live exchange rates from European Central Bank (ECB) with fallback providers.
-- Offline-friendly: caches the last successful rates locally.
-- Fast, responsive UI with instant updates as you type.
-- Precise decimal math; configurable precision.
+- **150+ currencies**: Complete ISO 4217 support with flag emojis for easy identification
+- Live exchange rates from European Central Bank (ECB) with fallback providers
+- Offline-friendly: caches the last successful rates locally
+- Fast, responsive UI with instant updates and animated currency symbols
+- Precise decimal math with configurable precision
 
 ## Requirements
 
@@ -26,11 +27,28 @@ pip install -r requirements.txt
 
 # Run the app (opens your browser)
 python -m currency_converter
-
-# Or visit manually if it didn't open: http://127.0.0.1:5000
 ```
 
-The web UI should open in your default browser. Type an amount, pick From/To currencies, and see the converted value instantly.
+The web UI opens in your default browser with a searchable list of 150+ currencies, each with its flag emoji for easy identification.
+
+## Features
+
+- **Comprehensive currency support**: 150+ currencies including major world currencies, regional currencies, and precious metals
+- **Visual identification**: Flag emojis for each currency make selection intuitive
+- **Animated background**: Floating currency symbols ($, €, £, ¥, etc.) with smooth animations
+- **Real-time conversion**: Updates as you type with debounced API calls
+- **Modern UI**: Dark theme, responsive design, and accessibility features
+- **Offline capability**: Caches exchange rates for continued use without internet
+
+## Supported Currencies
+
+The app includes all major ISO 4217 currencies organized by region:
+- **Major**: USD 🇺🇸, EUR 🇪🇺, GBP 🇬🇧, JPY 🇯🇵, AUD 🇦🇺, CAD 🇨🇦, CHF 🇨🇭, CNY 🇨🇳
+- **Europe**: All EU currencies plus regional ones (SEK, NOK, RUB, TRY, etc.)
+- **Asia Pacific**: Complete coverage including emerging markets
+- **Middle East & Africa**: Regional currencies with proper flag representation
+- **Americas**: North, Central, and South American currencies
+- **Precious Metals**: XAU (Gold), XAG (Silver), XPT (Platinum), XPD (Palladium)
 
 ## Project structure
 
