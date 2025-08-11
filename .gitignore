@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+# App cache
+rates_cache.json
