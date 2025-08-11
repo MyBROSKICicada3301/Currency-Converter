@@ -1,4 +1,4 @@
-# ISO 4217 currency list (common + ECB supported). Extend as needed.
+# ISO 4217 currency list (common + ECB supported).
 CURRENCIES = {
     "EUR": "Euro",
     "USD": "US Dollar",
