@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Yahoo Finance validated currency list with flag emojis
 # Only includes currencies that are confirmed to work with Yahoo Finance API
 CURRENCIES = {
