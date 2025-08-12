@@ -154,7 +154,13 @@ def index() -> Response:
             <button class="btn" id="refresh">🔄 Refresh Rates</button>
           </div>
           <div class="status" id="status">Loading rates...</div>
-          <div class="footer">Base: EUR · Precision: {DECIMAL_PLACES} dp</div>
+          <div class="footer" style="display: flex; justify-content: space-between; align-items: center;">
+            <span>Data: Yahoo Finance</span>
+            <span>Base: EUR · Precision: {DECIMAL_PLACES} dp</span>
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 16px; font-size: 11px; color: var(--muted); opacity: 0.6;">
+          Created by MyBROSKICicada3301
         </div>
       </div>
       <script>
