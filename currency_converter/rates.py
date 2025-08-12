@@ -237,3 +237,34 @@ def format_decimal(value: Decimal, places: int = DECIMAL_PLACES) -> str:
     """Format decimal with specified precision"""
     q = Decimal(10) ** -places
     return str(value.quantize(q, rounding=ROUND_HALF_UP))
+
+
+def get_historical_data(from_currency: str, to_currency: str, period: str = "1mo") -> List[Dict]:
+    """Get historical exchange rate data for charting"""
+    try:
+        if from_currency == to_currency:
+            # Return flat line at 1.0 for same currency
+            return [{"date": int(time.time()) * 1000, "rate": 1.0}]
+        
+        symbol = f"{from_currency}{to_currency}=X"
+        ticker = yf.Ticker(symbol)
+        
+        # Get historical data
+        data = ticker.history(period=period, interval="1d")
+        
+        if data.empty:
+            return []
+        
+        # Convert to list of dictionaries for JSON response
+        historical_data = []
+        for index, row in data.iterrows():
+            historical_data.append({
+                "date": int(index.timestamp()) * 1000,  # Convert to milliseconds for JavaScript
+                "rate": float(row['Close'])
+            })
+        
+        return historical_data
+        
+    except Exception as e:
+        print(f"Error fetching historical data for {from_currency}/{to_currency}: {e}")
+        return []

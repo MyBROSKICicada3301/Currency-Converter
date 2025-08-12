@@ -52,11 +52,11 @@ from flask import Flask, jsonify, request, Response
 try:
     # Try relative import first (when run as module)
     from .currencies import sorted_currency_codes, describe
-    from .rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
+    from .rates import get_rates, format_decimal, DECIMAL_PLACES, Rates, get_historical_data
 except ImportError:
     # Fall back to absolute import (when run directly)
     from currencies import sorted_currency_codes, describe
-    from rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
+    from rates import get_rates, format_decimal, DECIMAL_PLACES, Rates, get_historical_data
 
 
 app = Flask(__name__)
@@ -85,7 +85,6 @@ def _load_rates_async() -> None:
 
 @app.get("/")
 def index() -> Response:
-    # Complete, modern, responsive UI with vanilla CSS/JS and currency animations
     html = f"""
     <!doctype html>
     <html lang="en">
@@ -93,8 +92,11 @@ def index() -> Response:
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>Currency Converter</title>
+      <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
       <style>
         :root {{
+          /* Dark Theme (Default) */
           --bg: #0f172a; /* slate-900 */
           --panel: #111827; /* gray-900 */
           --text: #e5e7eb; /* gray-200 */
@@ -103,21 +105,133 @@ def index() -> Response:
           --accent2: #a78bfa; /* violet-400 */
           --border: #1f2937; /* gray-800 */
           --error: #f87171; /* red-400 */
+          --success: #34d399; /* emerald-400 */
         }}
+
+        /* Light Theme */
+        [data-theme="light"] {{
+          --bg: #f8fafc; /* slate-50 */
+          --panel: #ffffff; /* white */
+          --text: #1e293b; /* slate-800 */
+          --muted: #64748b; /* slate-500 */
+          --accent: #0ea5e9; /* sky-500 */
+          --accent2: #8b5cf6; /* violet-500 */
+          --border: #e2e8f0; /* slate-200 */
+          --error: #ef4444; /* red-500 */
+          --success: #10b981; /* emerald-500 */
+        }}
+
+        /* Blue Theme */
+        [data-theme="blue"] {{
+          --bg: #0c1426; /* blue-950 */
+          --panel: #1e293b; /* slate-800 */
+          --text: #f1f5f9; /* slate-100 */
+          --muted: #94a3b8; /* slate-400 */
+          --accent: #3b82f6; /* blue-500 */
+          --accent2: #6366f1; /* indigo-500 */
+          --border: #334155; /* slate-700 */
+          --error: #f87171; /* red-400 */
+          --success: #22d3ee; /* cyan-400 */
+        }}
+
+        /* Green Theme */
+        [data-theme="green"] {{
+          --bg: #0f1419; /* emerald-950 */
+          --panel: #1f2937; /* gray-800 */
+          --text: #ecfdf5; /* emerald-50 */
+          --muted: #a1a1aa; /* zinc-400 */
+          --accent: #10b981; /* emerald-500 */
+          --accent2: #22c55e; /* green-500 */
+          --border: #374151; /* gray-700 */
+          --error: #f87171; /* red-400 */
+          --success: #34d399; /* emerald-400 */
+        }}
+
+        /* Purple Theme */
+        [data-theme="purple"] {{
+          --bg: #1a0b2e; /* custom purple-950 */
+          --panel: #2d1b4e; /* custom purple-900 */
+          --text: #f3e8ff; /* purple-50 */
+          --muted: #a855f7; /* purple-500 */
+          --accent: #8b5cf6; /* violet-500 */
+          --accent2: #a855f7; /* purple-500 */
+          --border: #4c1d95; /* purple-800 */
+          --error: #f87171; /* red-400 */
+          --success: #34d399; /* emerald-400 */
+        }}
+
+        /* Rose Theme */
+        [data-theme="rose"] {{
+          --bg: #1f0a13; /* custom rose-950 */
+          --panel: #3f1725; /* custom rose-900 */
+          --text: #fdf2f8; /* pink-50 */
+          --muted: #f472b6; /* pink-400 */
+          --accent: #ec4899; /* pink-500 */
+          --accent2: #f43f5e; /* rose-500 */
+          --border: #881337; /* rose-800 */
+          --error: #f87171; /* red-400 */
+          --success: #34d399; /* emerald-400 */
+        }}
+
+        /* Base styles */
         * {{ box-sizing: border-box; }}
-        body {{ margin: 0; background: linear-gradient(135deg, #0b1020, #0f172a); color: var(--text); font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; overflow-x: hidden; }}
+        body {{ 
+          margin: 0; 
+          background: linear-gradient(135deg, var(--bg), var(--panel)); 
+          color: var(--text); 
+          font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; 
+          overflow-x: hidden; 
+          transition: background 0.3s ease, color 0.3s ease;
+        }}
         /* Animated background canvas */
-        #bg {{ position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; display: block; background: radial-gradient(1200px 600px at 10% 10%, rgba(34,211,238,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(167,139,250,0.06), transparent); }}
+        #bg {{ 
+          position: fixed; 
+          inset: 0; 
+          width: 100%; 
+          height: 100%; 
+          z-index: -1; 
+          display: block; 
+        }}
         .container {{ max-width: 900px; margin: 0 auto; padding: 32px 16px; }}
-        .card {{ background: rgba(17,24,39,0.85); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px); }}
-        h1 {{ margin: 0 0 16px; font-size: 28px; letter-spacing: 0.3px; }}
+        .card {{ 
+          background: var(--panel); 
+          border: 1px solid var(--border); 
+          border-radius: 16px; 
+          padding: 24px; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.2); 
+          backdrop-filter: blur(6px); 
+          transition: background 0.3s ease, border-color 0.3s ease;
+        }}
+        h1 {{ margin: 0 0 16px; font-size: 28px; letter-spacing: 0.3px; display: flex; justify-content: space-between; align-items: center; }}
         .grid {{ display: grid; gap: 16px; grid-template-columns: 1fr; }}
         @media (min-width: 720px) {{ .grid {{ grid-template-columns: 1fr 1fr; }} }}
         label {{ display:block; margin-bottom: 6px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }}
-        input, select {{ width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: #0b1220; color: var(--text); outline: none; }}
-        input:focus, select:focus {{ border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,238,0.15); }}
+        input, select {{ 
+          width: 100%; 
+          padding: 12px 14px; 
+          border-radius: 10px; 
+          border: 1px solid var(--border); 
+          background: var(--bg); 
+          color: var(--text); 
+          outline: none; 
+          transition: border-color 0.3s ease, background 0.3s ease;
+        }}
+        input:focus, select:focus {{ 
+          border-color: var(--accent); 
+          box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15); 
+        }}
         .row {{ display:flex; gap: 12px; align-items: end; }}
-        .btn {{ padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(167,139,250,0.2)); color: var(--text); cursor: pointer; white-space: nowrap; border: none; }}
+        .btn {{ 
+          padding: 10px 14px; 
+          border-radius: 10px; 
+          border: 1px solid var(--border); 
+          background: var(--accent); 
+          color: var(--bg); 
+          cursor: pointer; 
+          white-space: nowrap; 
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }}
         .btn:hover {{ filter: brightness(1.1); }}
         .btn:active {{ filter: brightness(0.9); }}
         .result {{ margin-top: 18px; font-size: 22px; font-weight: 700; letter-spacing: .3px; }}
@@ -125,13 +239,66 @@ def index() -> Response:
         .error {{ color: var(--error); }}
         .footer {{ margin-top: 24px; font-size: 12px; color: var(--muted); text-align: right; }}
         .actions {{ margin-top: 16px; display: flex; gap: 12px; }}
+        .chart-section {{ margin-top: 24px; }}
+        .chart-container {{ position: relative; height: 300px; margin-top: 16px; }}
+        .chart-controls {{ display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }}
+        .period-btn {{ 
+          padding: 6px 12px; 
+          border-radius: 6px; 
+          border: 1px solid var(--border); 
+          background: var(--panel); 
+          color: var(--muted); 
+          cursor: pointer; 
+          font-size: 12px; 
+          transition: all 0.3s ease;
+        }}
+        .period-btn.active {{ background: var(--accent); color: var(--bg); }}
+        .period-btn:hover {{ filter: brightness(1.1); }}
+        
+        /* Theme Selector Styles */
+        .theme-selector {{ 
+          display: flex; 
+          gap: 4px; 
+          align-items: center;
+        }}
+        .theme-btn {{ 
+          width: 24px; 
+          height: 24px; 
+          border-radius: 50%; 
+          border: 2px solid var(--border); 
+          cursor: pointer; 
+          transition: all 0.3s ease; 
+          position: relative;
+        }}
+        .theme-btn:hover {{ transform: scale(1.1); }}
+        .theme-btn.active {{ 
+          border-color: #FFA500; 
+          box-shadow: 0 0 0 2px #FFA500; 
+          transform: scale(1.05);
+        }}
+        .theme-btn[data-theme="dark"] {{ background: linear-gradient(135deg, #0f172a, #22d3ee); }}
+        .theme-btn[data-theme="light"] {{ background: linear-gradient(135deg, #ffffff, #0ea5e9); }}
+        .theme-btn[data-theme="blue"] {{ background: linear-gradient(135deg, #0c1426, #3b82f6); }}
+        .theme-btn[data-theme="green"] {{ background: linear-gradient(135deg, #0f1419, #10b981); }}
+        .theme-btn[data-theme="purple"] {{ background: linear-gradient(135deg, #1a0b2e, #8b5cf6); }}
+        .theme-btn[data-theme="rose"] {{ background: linear-gradient(135deg, #1f0a13, #ec4899); }}
       </style>
     </head>
     <body>
       <canvas id="bg" aria-hidden="true"></canvas>
       <div class="container">
         <div class="card">
-          <h1>Currency Converter</h1>
+          <h1>
+            Currency Converter
+            <div class="theme-selector" title="Choose Theme">
+              <div class="theme-btn active" data-theme="dark"></div>
+              <div class="theme-btn" data-theme="light"></div>
+              <div class="theme-btn" data-theme="blue"></div>
+              <div class="theme-btn" data-theme="green"></div>
+              <div class="theme-btn" data-theme="purple"></div>
+              <div class="theme-btn" data-theme="rose"></div>
+            </div>
+          </h1>
           <div class="grid">
             <div>
               <label for="amount">Amount</label>
@@ -154,6 +321,23 @@ def index() -> Response:
             <button class="btn" id="refresh">🔄 Refresh Rates</button>
           </div>
           <div class="status" id="status">Loading rates...</div>
+          
+          <!-- Chart Section -->
+          <div class="chart-section">
+            <h3 style="margin: 0 0 12px; font-size: 18px;">Exchange Rate History</h3>
+            <div class="chart-controls">
+              <span style="font-size: 12px; color: var(--muted);">Period:</span>
+              <button class="period-btn active" data-period="1mo">1M</button>
+              <button class="period-btn" data-period="3mo">3M</button>
+              <button class="period-btn" data-period="6mo">6M</button>
+              <button class="period-btn" data-period="1y">1Y</button>
+              <button class="period-btn" data-period="2y">2Y</button>
+            </div>
+            <div class="chart-container">
+              <canvas id="chart"></canvas>
+            </div>
+          </div>
+          
           <div class="footer" style="display: flex; justify-content: space-between; align-items: center;">
             <span>Data: Yahoo Finance</span>
             <span>Base: EUR · Precision: {DECIMAL_PLACES} dp</span>
@@ -171,6 +355,74 @@ def index() -> Response:
         const resultEl = $("result");
         const statusEl = $("status");
         const bg = $("bg");
+        
+        // Chart variables
+        let chartInstance = null;
+        let currentPeriod = '1mo';
+        
+        // Theme functions
+        function setTheme(theme) {{
+          document.body.setAttribute('data-theme', theme);
+          localStorage.setItem('preferred-theme', theme);
+          
+          // Update active theme button
+          document.querySelectorAll('.theme-btn').forEach(btn => {{
+            btn.classList.remove('active');
+          }});
+          document.querySelector(`[data-theme="${{theme}}"]`).classList.add('active');
+          
+          // Update canvas background
+          updateCanvasBackground();
+          
+          // Update chart colors if chart exists
+          if (chartInstance) {{
+            updateChartTheme();
+          }}
+        }}
+        
+        function updateCanvasBackground() {{
+          const theme = document.body.getAttribute('data-theme') || 'dark';
+          const style = getComputedStyle(document.body);
+          const accent = style.getPropertyValue('--accent').trim();
+          const accent2 = style.getPropertyValue('--accent2').trim();
+          
+          // Update background canvas gradient based on theme
+          if (bg) {{
+            const gradients = {{
+              'dark': `radial-gradient(1200px 600px at 10% 10%, rgba(34,211,238,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(167,139,250,0.06), transparent)`,
+              'light': `radial-gradient(1200px 600px at 10% 10%, rgba(14,165,233,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(139,92,246,0.06), transparent)`,
+              'blue': `radial-gradient(1200px 600px at 10% 10%, rgba(59,130,246,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(99,102,241,0.06), transparent)`,
+              'green': `radial-gradient(1200px 600px at 10% 10%, rgba(16,185,129,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(34,197,94,0.06), transparent)`,
+              'purple': `radial-gradient(1200px 600px at 10% 10%, rgba(139,92,246,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(168,85,247,0.06), transparent)`,
+              'rose': `radial-gradient(1200px 600px at 10% 10%, rgba(236,72,153,0.06), transparent), radial-gradient(1000px 500px at 90% 90%, rgba(244,63,94,0.06), transparent)`
+            }};
+            bg.style.background = gradients[theme] || gradients['dark'];
+          }}
+        }}
+        
+        function updateChartTheme() {{
+          if (!chartInstance) return;
+          
+          const style = getComputedStyle(document.body);
+          const textColor = style.getPropertyValue('--text').trim();
+          const mutedColor = style.getPropertyValue('--muted').trim();
+          const accentColor = style.getPropertyValue('--accent').trim();
+          
+          chartInstance.options.plugins.legend.labels.color = textColor;
+          chartInstance.options.scales.x.ticks.color = mutedColor;
+          chartInstance.options.scales.y.ticks.color = mutedColor;
+          chartInstance.options.scales.x.grid.color = mutedColor + '33';
+          chartInstance.options.scales.y.grid.color = mutedColor + '33';
+          chartInstance.data.datasets[0].borderColor = accentColor;
+          chartInstance.data.datasets[0].backgroundColor = accentColor + '1A';
+          chartInstance.update();
+        }}
+        
+        // Load saved theme
+        function loadSavedTheme() {{
+          const savedTheme = localStorage.getItem('preferred-theme') || 'dark';
+          setTheme(savedTheme);
+        }}
 
         async function loadCurrencies() {{
           const res = await fetch('/api/currencies');
@@ -216,8 +468,100 @@ def index() -> Response:
           }}
         }}
 
+        // Chart functions
+        async function loadChart() {{
+          const from = fromEl.value;
+          const to = toEl.value;
+          
+          try {{
+            const res = await fetch(`/api/historical?from=${{from}}&to=${{to}}&period=${{currentPeriod}}`);
+            const data = await res.json();
+            
+            if (res.ok && data.data && data.data.length > 0) {{
+              updateChart(data);
+            }} else {{
+              console.log('No historical data available');
+            }}
+          }} catch (e) {{
+            console.log('Failed to load chart data:', e);
+          }}
+        }}
+
+        function updateChart(data) {{
+          const ctx = $('chart').getContext('2d');
+          
+          if (chartInstance) {{
+            chartInstance.destroy();
+          }}
+
+          const chartData = data.data.map(point => ({{
+            x: new Date(point.date),
+            y: point.rate
+          }}));
+
+          // Get current theme colors
+          const style = getComputedStyle(document.body);
+          const accentColor = style.getPropertyValue('--accent').trim();
+          const textColor = style.getPropertyValue('--text').trim();
+          const mutedColor = style.getPropertyValue('--muted').trim();
+
+          chartInstance = new Chart(ctx, {{
+            type: 'line',
+            data: {{
+              datasets: [{{
+                label: `${{data.from}} to ${{data.to}}`,
+                data: chartData,
+                borderColor: accentColor,
+                backgroundColor: accentColor + '1A',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.1
+              }}]
+            }},
+            options: {{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {{
+                legend: {{
+                  labels: {{
+                    color: textColor
+                  }}
+                }}
+              }},
+              scales: {{
+                x: {{
+                  type: 'time',
+                  time: {{
+                    displayFormats: {{
+                      day: 'MMM dd',
+                      week: 'MMM dd',
+                      month: 'MMM yyyy'
+                    }}
+                  }},
+                  ticks: {{
+                    color: mutedColor
+                  }},
+                  grid: {{
+                    color: mutedColor + '33'
+                  }}
+                }},
+                y: {{
+                  ticks: {{
+                    color: mutedColor
+                  }},
+                  grid: {{
+                    color: mutedColor + '33'
+                  }}
+                }}
+              }}
+            }}
+          }});
+        }}
+
         $("swap").addEventListener('click', () => {{
-          const a = fromEl.value; fromEl.value = toEl.value; toEl.value = a; convert();
+          const a = fromEl.value; fromEl.value = toEl.value; toEl.value = a; 
+          convert();
+          loadChart();
         }});
 
         $("refresh").addEventListener('click', refreshRates);
@@ -225,8 +569,30 @@ def index() -> Response:
         [amountEl, fromEl, toEl].forEach(el => el.addEventListener('input', () => {{
           // Small debounce
           clearTimeout(window.__t);
-          window.__t = setTimeout(convert, 120);
+          window.__t = setTimeout(() => {{
+            convert();
+            if (el === fromEl || el === toEl) {{
+              loadChart();
+            }}
+          }}, 120);
         }}));
+
+        // Period button event listeners
+        document.querySelectorAll('.period-btn').forEach(btn => {{
+          btn.addEventListener('click', () => {{
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.dataset.period;
+            loadChart();
+          }});
+        }});
+
+        // Theme button event listeners
+        document.querySelectorAll('.theme-btn').forEach(btn => {{
+          btn.addEventListener('click', () => {{
+            setTheme(btn.dataset.theme);
+          }});
+        }});
 
         // ===== Animated background of moving currency symbols =====
         (function currencyAnimation() {{
@@ -307,9 +673,14 @@ def index() -> Response:
         }})();
 
         (async function init() {{
+          // Load saved theme first
+          loadSavedTheme();
+          
           await loadCurrencies();
           // try an initial convert; backend may still be loading
           await convert();
+          // Load initial chart
+          await loadChart();
         }})();
       </script>
     </body>
@@ -384,6 +755,32 @@ def refresh_endpoint():
             pass
     threading.Thread(target=worker, daemon=True).start()
     return jsonify({"status": "refreshing"})
+
+
+@app.get("/api/historical")
+def historical_endpoint():
+    from_currency = (request.args.get("from") or "").upper().strip()
+    to_currency = (request.args.get("to") or "").upper().strip()
+    period = request.args.get("period", "1mo").strip()
+    
+    if not from_currency or not to_currency:
+        return jsonify({"error": "Both 'from' and 'to' currencies required"}), 400
+    
+    # Validate period
+    valid_periods = ["1mo", "3mo", "6mo", "1y", "2y"]
+    if period not in valid_periods:
+        period = "1mo"
+    
+    try:
+        historical_data = get_historical_data(from_currency, to_currency, period)
+        return jsonify({
+            "from": from_currency,
+            "to": to_currency,
+            "period": period,
+            "data": historical_data
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch historical data: {e}"}), 500
 
 
 def main(host: str = "127.0.0.1", port: int = 5000, open_browser: bool = True) -> None:

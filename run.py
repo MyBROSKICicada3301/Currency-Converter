@@ -16,7 +16,6 @@ if __name__ == "__main__":
     print("🚀 Starting Currency Converter...")
     print("=" * 50)
     
-    # Import and run the main app
     from currency_converter.app import main
     
     print("🌐 Opening web application...")
