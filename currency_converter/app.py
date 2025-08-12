@@ -1,15 +1,62 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 import threading
 import time
 import webbrowser
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
+
+def install_requirements():
+    """Automatically install required packages if they're missing"""
+    required_packages = [
+        ("flask", "flask>=3.0,<4"),
+        ("yfinance", "yfinance>=0.2.0"),
+        ("requests", "requests>=2.31.0")
+    ]
+    
+    missing_packages = []
+    
+    print("Checking dependencies...")
+    for package_name, package_spec in required_packages:
+        try:
+            __import__(package_name)
+            print(f"✓ {package_name} is available")
+        except ImportError:
+            print(f"✗ {package_name} is missing")
+            missing_packages.append(package_spec)
+    
+    if missing_packages:
+        print(f"\n📦 Installing missing dependencies: {', '.join(missing_packages)}")
+        print("This may take a moment...")
+        try:
+            subprocess.check_call([
+                sys.executable, "-m", "pip", "install"
+            ] + missing_packages, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            print("✅ Dependencies installed successfully!\n")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to install dependencies: {e}")
+            print("💡 Please install manually using: pip install -r requirements.txt")
+            sys.exit(1)
+    else:
+        print("✅ All dependencies are available!\n")
+
+
+# Install requirements before importing other modules
+install_requirements()
+
 from flask import Flask, jsonify, request, Response
 
-from .currencies import sorted_currency_codes, describe
-from .rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
+try:
+    # Try relative import first (when run as module)
+    from .currencies import sorted_currency_codes, describe
+    from .rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
+except ImportError:
+    # Fall back to absolute import (when run directly)
+    from currencies import sorted_currency_codes, describe
+    from rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
 
 
 app = Flask(__name__)
