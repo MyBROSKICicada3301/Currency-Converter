@@ -8,7 +8,7 @@ from typing import Optional
 
 from flask import Flask, jsonify, request, Response
 
-from .currencies import sorted_currency_codes, describe, get_flag
+from .currencies import sorted_currency_codes, describe
 from .rates import get_rates, format_decimal, DECIMAL_PLACES, Rates
 
 
@@ -122,7 +122,7 @@ def index() -> Response:
         async function loadCurrencies() {{
           const res = await fetch('/api/currencies');
           const data = await res.json();
-          const opts = data.currencies.map(c => `<option value="${{c.code}}">${{c.flag}} ${{c.code}} - ${{c.name}}</option>`).join('');
+          const opts = data.currencies.map(c => `<option value="${{c.code}}">${{c.code}} - ${{c.name}}</option>`).join('');
           fromEl.innerHTML = opts;
           toEl.innerHTML = opts;
           fromEl.value = 'USD';
@@ -137,7 +137,7 @@ def index() -> Response:
             const res = await fetch(`/api/convert?amount=${{encodeURIComponent(amount)}}&src=${{src}}&dst=${{dst}}`);
             const data = await res.json();
             if (res.ok) {{
-              resultEl.textContent = `${{data.src_flag}} ${{data.formatted_amount}} ${{data.src}} = ${{data.dst_flag}} ${{data.formatted_converted}} ${{data.dst}}`;
+              resultEl.textContent = `${{data.formatted_amount}} ${{data.src}} = ${{data.formatted_converted}} ${{data.dst}}`;
               statusEl.textContent = 'Rates loaded';
               statusEl.classList.remove('error');
             }} else {{
@@ -270,14 +270,13 @@ def currencies_endpoint():
     items = []
     for code in sorted_currency_codes():
         full_desc = describe(code)
-        # Extract just the name part after "flag CODE - "
+        # Extract just the name part after "CODE - "
         parts = full_desc.split(" - ", 1)
         if len(parts) == 2:
             flag_code, name = parts
-            flag = flag_code.split()[0]  # Extract just the flag emoji
-            items.append({"code": code, "name": name, "flag": flag})
+            items.append({"code": code, "name": name})
         else:
-            items.append({"code": code, "name": "Unknown", "flag": "❓"})
+            items.append({"code": code, "name": "Unknown"})
     return jsonify({"currencies": items})
 
 
@@ -317,8 +316,6 @@ def convert_endpoint():
         "converted": float(converted),
         "formatted_amount": format_decimal(amount, DECIMAL_PLACES),
         "formatted_converted": format_decimal(converted, DECIMAL_PLACES),
-        "src_flag": get_flag(src),
-        "dst_flag": get_flag(dst),
     })
 
 

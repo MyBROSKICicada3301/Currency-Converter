@@ -1,12 +1,21 @@
 # Currency Converter (Web UI)
 
-A comprehensive currency converter with a modern browser-based UI featuring 150+ currencies with flag emojis.
+A comprehensive currency converter with a modern browser-based UI featuring 150+ currencies with flag emojis and real-time rates from Yahoo Finance.
 
 - **150+ currencies**: Complete ISO 4217 support with flag emojis for easy identification
-- Live exchange rates from European Central Bank (ECB) with fallback providers
-- Offline-friendly: caches the last successful rates locally
-- Fast, responsive UI with instant updates and animated currency symbols
-- Precise decimal math with configurable precision
+- **Yahoo Finance API**: Real-time exchange rates from Yahoo Finance with fallback providers (ECB, Open Exchange Rates)
+- **Offline-friendly**: Caches the last successful rates locally for 1 hour
+- **Fast, responsive UI**: Instant updates with animated currency symbols
+- **Precise decimal math**: Configurable precision with proper rounding
+
+## Features
+
+- **Primary Data Source**: Yahoo Finance API for the most up-to-date exchange rates
+- **Multiple Fallbacks**: ECB and Open Exchange Rates APIs ensure reliability
+- **Base Currency**: USD-based rates for better global coverage
+- **77+ Active Currencies**: Prioritized fetching for major world currencies
+- **Smart Caching**: 1-hour cache with automatic refresh
+- **Error Recovery**: Graceful fallback to cached data when APIs are unavailable
 
 ## Requirements
 
